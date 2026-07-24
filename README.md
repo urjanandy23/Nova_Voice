@@ -1,4 +1,4 @@
-# Voice AI Assistant
+# Nova Voice
 
 A hands-free voice assistant: wake word → speech-to-text → Claude (with
 tool use) → streaming text-to-speech. Built to minimize perceived latency —
