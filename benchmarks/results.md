@@ -1,0 +1,25 @@
+# Streaming vs. naive latency benchmark
+
+Average time-to-first-audio across 10 prompts:
+
+| Design | Avg. time to first audio |
+|---|---|
+| Streaming (this project) | 28.82s |
+| Naive (wait for full reply) | 29.64s |
+
+**Streaming starts speaking 3% sooner on average.**
+
+## Per-prompt results
+
+| Prompt | Streaming (s) | Naive (s) | Improvement |
+|---|---|---|---|
+| What's the capital of Japan? | 39.735 | 39.735 | 0.0% |
+| Give me a two sentence summary of why the sky is blue. | 33.08 | 35.453 | 6.7% |
+| Suggest a good name for a pet goldfish. | 59.146 | 62.572 | 5.5% |
+| What's the boiling point of water in Fahrenheit? | 24.697 | 24.697 | 0.0% |
+| Recommend one book for someone who likes mystery novels. | 24.595 | 24.595 | 0.0% |
+| What year did the first iPhone come out? | 22.625 | 22.625 | 0.0% |
+| Explain what photosynthesis is in one sentence. | 19.402 | 19.402 | 0.0% |
+| What's a healthy breakfast idea? | 13.688 | 16.103 | 15.0% |
+| Name three primary colors. | 31.089 | 31.089 | 0.0% |
+| What's the tallest mountain in the world? | 20.101 | 20.101 | 0.0% |
