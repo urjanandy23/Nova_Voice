@@ -1,29 +1,32 @@
-"""Talks to a locally-running Ollama model instead of Claude — same idea as
-llm.py (streaming + sentence chunking + tool use), just pointed at your own
-computer instead of Anthropic's API. No API key, no cost, ever.
-"""
+"""Ollama backend: no API key and no cost. The shared loop is in llm_base."""
+from __future__ import annotations
+
+from typing import Any, Callable
+
 import ollama
 
 from .config import Config
-from .functions import TOOLS, dispatch_tool
-from .llm import SYSTEM_PROMPT, split_complete_sentences
+from .functions import TOOLS
+from .llm_base import MAX_TOOL_ROUNDS, BaseVoiceLLM, Round, ToolCall  # noqa: F401
+from .memory import OllamaMemory
+from .prompts import SYSTEM_PROMPT
 
 
-def _to_ollama_tools(tools):
-    converted = []
-    for t in tools:
-        converted.append({
+def _to_ollama_tools(tools: list[dict]) -> list[dict]:
+    return [
+        {
             "type": "function",
             "function": {
                 "name": t["name"],
                 "description": t["description"],
                 "parameters": t["input_schema"],
             },
-        })
-    return converted
+        }
+        for t in tools
+    ]
 
 
-def _get(obj, key, default=None):
+def _get(obj: Any, key: str, default: Any = None) -> Any:
     if obj is None:
         return default
     if isinstance(obj, dict):
@@ -31,52 +34,55 @@ def _get(obj, key, default=None):
     return getattr(obj, key, default)
 
 
-class OllamaVoiceLLM:
-    def __init__(self):
+class OllamaVoiceLLM(BaseVoiceLLM):
+    memory_class = OllamaMemory
+
+    def __init__(self) -> None:
         self.model = Config.OLLAMA_MODEL
         self.tools = _to_ollama_tools(TOOLS)
         self.client = ollama.Client(host=Config.OLLAMA_HOST)
 
-    def stream_response(self, memory, on_sentence):
-        while True:
-            messages = [{"role": "system", "content": SYSTEM_PROMPT}] + memory.as_list()
+    def _stream_round(self, memory: OllamaMemory, feed: Callable[[str], None],
+                      cancel: Any, timeline: Any) -> Round:
+        messages = [{"role": "system", "content": SYSTEM_PROMPT}] + memory.as_list()
+        full_text = ""
+        tool_calls_seen = None
 
-            buffer = ""
-            full_text = ""
-            tool_calls_seen = None
+        stream = self.client.chat(
+            model=self.model, messages=messages, tools=self.tools, stream=True
+        )
+        for chunk in stream:
+            msg = _get(chunk, "message")
+            piece = _get(msg, "content", "") or ""
+            if piece:
+                if timeline:
+                    timeline.mark("first_token")
+                if cancel is not None and cancel.is_set():
+                    return Round(cancelled=True)
+                full_text += piece
+                feed(piece)
+            calls = _get(msg, "tool_calls")
+            if calls:
+                tool_calls_seen = calls
 
-            stream = self.client.chat(
-                model=self.model,
-                messages=messages,
-                tools=self.tools,
-                stream=True,
-            )
-            for chunk in stream:
-                msg = _get(chunk, "message")
-                piece = _get(msg, "content", "") or ""
-                if piece:
-                    buffer += piece
-                    full_text += piece
-                    sentences, buffer = split_complete_sentences(buffer)
-                    for s in sentences:
-                        on_sentence(s)
+        if not tool_calls_seen:
+            return Round(result=full_text, raw=full_text)
 
-                calls = _get(msg, "tool_calls")
-                if calls:
-                    tool_calls_seen = calls
+        parsed = []
+        for call in tool_calls_seen:
+            fn = _get(call, "function")
+            name = _get(fn, "name")
+            parsed.append(ToolCall(_get(call, "id", name) or name, name,
+                                   _get(fn, "arguments") or {}))
+        return Round(tool_calls=parsed, result=full_text, raw=tool_calls_seen)
 
-            if buffer.strip():
-                on_sentence(buffer.strip())
+    def _append_assistant(self, memory: OllamaMemory, rnd: Round) -> None:
+        if rnd.tool_calls:
+            memory.add_assistant_tool_calls(rnd.raw)
+        else:
+            memory.add_assistant_text(rnd.raw)
 
-            if not tool_calls_seen:
-                memory.add_assistant_text(full_text)
-                return full_text
-
-            memory.add_assistant_tool_calls(tool_calls_seen)
-            for call in tool_calls_seen:
-                fn = _get(call, "function")
-                name = _get(fn, "name")
-                args = _get(fn, "arguments") or {}
-                result = dispatch_tool(name, args)
-                call_id = _get(call, "id", name)
-                memory.add_tool_message(call_id, name, result)
+    def _append_tool_results(self, memory: OllamaMemory,
+                             results: list[tuple[ToolCall, str]]) -> None:
+        for call, text in results:
+            memory.add_tool_message(call.id, call.name, text)

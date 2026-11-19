@@ -1,0 +1,16 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install light test dependencies (audio/model/LLM libs are stubbed in tests/_stubs.py)
+        run: pip install numpy python-dotenv
+      - name: Compile
+        run: python -m compileall -q src tests main.py benchmarks evals
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v

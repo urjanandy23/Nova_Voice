@@ -9,3 +9,9 @@ reminders.json
 models/
 *.egg-info/
 .DS_Store
+
+reports/
+*.tmp
+
+# machine-specific freeze of your own environment
+requirements.lock

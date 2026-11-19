@@ -1,11 +1,16 @@
-anthropic>=0.39.0
-faster-whisper>=1.0.3
-edge-tts>=6.1.12
-sounddevice>=0.4.6
-numpy>=1.26.4
-scipy>=1.13.0
-openwakeword>=0.6.0
-duckduckgo-search>=6.2.13
-python-dotenv>=1.0.1
-pydub>=0.25.1
-simpleaudio>=1.0.4
+# Lower bounds are what the code was written against; upper bounds stop a future
+# major release from breaking a fresh install. For fully reproducible installs,
+# generate an exact lock file after your first successful run:
+#     pip freeze > requirements.lock      (see README > Reproducible installs)
+anthropic>=0.39.0,<1.0
+ollama>=0.4.0,<1.0
+faster-whisper>=1.0.3,<2.0
+edge-tts>=6.1.12,<8.0
+sounddevice>=0.4.6,<0.6
+numpy>=1.26.4,<3.0
+openwakeword>=0.6.0,<1.0
+ddgs>=9.0.0,<10.0
+python-dotenv>=1.0.1,<2.0
+pydub>=0.25.1,<1.0
+# pydub imports the stdlib `audioop` module, which Python 3.13 removed.
+audioop-lts>=0.2.1; python_version >= "3.13"

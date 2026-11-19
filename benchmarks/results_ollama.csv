@@ -1,0 +1,11 @@
+set,prompt,rep,mode,ttft,first_chunk,full,tools,synth
+long,Explain in four or five sentences why the sky is blue.,1,sentence,14.483553900001425,17.016962000001513,20.7226948000025,1,
+long,Explain in four or five sentences why the sky is blue.,1,clause,1.8504198000009637,3.337083399997937,13.277442200000223,1,
+long,"Give me a short, step by step explanation of how to make a cup of tea.",1,sentence,13.416342199998326,14.32216949999929,22.609904599998117,1,
+long,"Give me a short, step by step explanation of how to make a cup of tea.",1,clause,16.42391470000075,18.214928600002168,25.019128300002194,1,
+long,Describe how a bill becomes a law in about five sentences.,1,sentence,9.373050799997145,16.020189099999698,16.020197999998345,1,
+long,Describe how a bill becomes a law in about five sentences.,1,clause,2.9877156000002287,4.220591699999204,13.62653599999976,1,
+long,Tell me about the water cycle in a few sentences.,1,sentence,11.459244800000306,14.095741000000999,17.024652700001752,1,
+long,Tell me about the water cycle in a few sentences.,1,clause,1.9778531000010844,3.239684899999702,6.93667650000134,1,
+long,"Explain how vaccines work, in four sentences.",1,sentence,17.444707099999505,21.22176000000036,28.788181899999472,1,
+long,"Explain how vaccines work, in four sentences.",1,clause,2.1963819000011426,3.302733900000021,12.542000400000688,1,
