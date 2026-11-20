@@ -5,6 +5,12 @@ Ollama model, with tool use) → streaming text-to-speech. The engineering focus
 **perceived latency** and **natural turn-taking**: the assistant starts speaking
 before its answer has finished generating, and you can interrupt it mid-sentence.
 
+# Nova Voice
+
+**[Live demo and landing page](https://urjanandy23.github.io/Nova_Voice/)** · [Watch the 25-second video](https://github.com/urjanandy23/Nova_Voice/raw/main/docs/brag.mp4)
+
+[![Nova Voice demo video](docs/brag.jpg)](https://urjanandy23.github.io/Nova_Voice/)
+
 > **Status of the numbers.** Every performance figure in this README comes from a
 > script in this repo that you can re-run. Sections marked **TODO: run** are not
 > measured yet; they are filled in by the commands shown, never by hand.
