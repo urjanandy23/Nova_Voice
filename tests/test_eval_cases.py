@@ -58,9 +58,9 @@ class TestBuildMessages(unittest.TestCase):
             tool_ids = [m["tool_call_id"] for m in msgs if m["role"] == "tool"]
             self.assertEqual(ids, tool_ids, c.name)
 
-        def test_tool_case_renders_tool_messages(self):
-         c = next(c for c in cases.MULTI_TURN_CASES if c.name == "cancel 'that' reminder")
-         self.assertTrue(any(m["role"] == "tool" for m in cases.build_messages(c, "ollama")))
+    def test_tool_case_renders_tool_messages(self):
+        c = next(c for c in cases.MULTI_TURN_CASES if c.name == "cancel 'that' reminder")
+        self.assertTrue(any(m["role"] == "tool" for m in cases.build_messages(c, "ollama")))
     def test_unknown_provider_rejected(self):
         with self.assertRaises(ValueError):
             cases.build_messages(cases.MULTI_TURN_CASES[0], "nope")
