@@ -209,7 +209,6 @@ class TestAudioFailures(Base):
 class TestConstruction(Base):
     def build(self, mode, **patches):
         stack = contextlib.ExitStack()
-        stack.enter_context(mock.patch.object(Config, "LLM_PROVIDER", "ollama"))
         stack.enter_context(mock.patch.object(asst, "StreamingTTS", FakeTTS))
         stack.enter_context(mock.patch.object(asst, "_build_llm", lambda: FakeLLM()))
         stack.enter_context(mock.patch.object(asst, "start_reminder_watcher", lambda **kw: None))
@@ -237,7 +236,6 @@ class TestConstruction(Base):
     def test_missing_audio_libs_fall_back_to_text_only(self):
         with mock.patch.dict(sys.modules, {"src.stt": types.ModuleType("src.stt")}):
             with contextlib.ExitStack() as stack:
-                stack.enter_context(mock.patch.object(Config, "LLM_PROVIDER", "ollama"))
                 stack.enter_context(mock.patch.object(asst, "StreamingTTS", FakeTTS))
                 stack.enter_context(mock.patch.object(asst, "_build_llm", lambda: FakeLLM()))
                 stack.enter_context(mock.patch.object(asst, "start_reminder_watcher",

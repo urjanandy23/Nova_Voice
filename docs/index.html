@@ -1,10 +1,13 @@
+Here is the full updated code, with all seven changes applied. It is also saved as `index.html`.
+
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Nova Voice: a voice assistant you can talk over</title>
-<meta name="description" content="Nova Voice is an open-source, local-first voice assistant. Wake word, Whisper, Claude or Ollama, and streaming speech you can interrupt mid-sentence.">
+<meta name="description" content="Nova Voice is an open-source, local-first voice assistant. Wake word, Whisper, a local Ollama model, and streaming speech you can interrupt mid-sentence.">
 <meta property="og:title" content="Nova Voice: a voice assistant you can talk over">
 <meta property="og:description" content="Open-source voice assistant that starts speaking before its answer is finished, and stops when you interrupt.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎙️</text></svg>">
@@ -88,7 +91,7 @@ ol.pipe code{color:var(--ink);background:var(--code);padding:.1em .4em;border-ra
 .feat dd{margin:0;color:var(--muted);font-size:1rem}
 .feat dd code{color:var(--ink)}
 
-/* two backends + tools */
+/* two-column blocks + tools */
 .two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(1.5rem,4vw,3rem);margin-top:2.4rem}
 .two>div{border-left:4px solid var(--cobalt);padding-left:1.4rem}
 .two>div:nth-child(2){border-left-color:var(--signal)}
@@ -137,7 +140,7 @@ footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:1rem}
 <section class="hero">
   <div class="wrap">
     <h1>A voice assistant<br>you can talk over.</h1>
-    <p class="lead">Nova Voice starts speaking before its answer is finished, and stops the moment you cut in. It runs on your machine with Claude or a free local Ollama model.</p>
+    <p class="lead">Nova Voice starts speaking before its answer is finished, and stops the moment you cut in. The wake word, speech recognition and language model all run on your machine, with a free local Ollama model.</p>
     <div class="cta">
       <a class="btn primary" href="#run">Run it in 5 minutes</a>
       <a class="btn" href="https://github.com/urjanandy23/Nova_Voice">View the code</a>
@@ -170,7 +173,7 @@ footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:1rem}
       <li><h3>Wake word</h3><p>openwakeword listens for <code>hey jarvis</code> (or alexa, hey mycroft). Nothing else is processed until it hears it.</p></li>
       <li><h3>Record</h3><p>Adaptive endpointing measures the room's noise and ends your turn after 0.8 s of silence, instead of using a fixed magic number.</p></li>
       <li><h3>Transcribe</h3><p>faster-whisper runs locally. Trailing silence is trimmed before it sees the audio.</p></li>
-      <li><h3>Think</h3><p>Claude or a local Ollama model streams tokens back and can call tools mid-answer.</p></li>
+      <li><h3>Think</h3><p>A local Ollama model streams tokens back and can call tools mid-answer.</p></li>
       <li><h3>Chunk</h3><p>The token stream is cut into speakable sentences the moment each one completes. The cutter knows <code>Dr.</code>, <code>U.S.</code>, <code>3.5</code> and list markers are not sentence ends.</p></li>
       <li><h3>Speak</h3><p>edge-tts synthesizes chunk two while chunk one is playing, through an output stream that stops within about 64 ms.</p></li>
       <li class="loop"><h3>Listen while talking</h3><p>A barge-in monitor watches the mic. Sustained speech stops the voice, cancels generation, and keeps the words you already said for the next turn.</p></li>
@@ -196,15 +199,15 @@ footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:1rem}
 
 <section id="brains">
   <div class="wrap">
-    <h2>Pick your brain</h2>
+    <h2>The brain</h2>
     <div class="two">
       <div>
-        <h3>Claude</h3>
-        <p>Set <code>ANTHROPIC_API_KEY</code> for the hosted model with tool use.</p>
+        <h3>Ollama, runs on your machine</h3>
+        <p>Run <code>ollama pull llama3.2</code>. Free, no API key, and your transcribed words go only to <code>OLLAMA_HOST</code> (localhost by default).</p>
       </div>
       <div>
-        <h3>Ollama, fully local</h3>
-        <p>Set <code>LLM_PROVIDER=ollama</code> and run <code>ollama pull llama3.2</code>. Free, and nothing leaves your machine except web search.</p>
+        <h3>What still uses the network</h3>
+        <p>Spoken replies are synthesized by Microsoft's online voice service (<code>edge-tts</code>), and <code>search_web</code> queries go to DuckDuckGo. First run also downloads the speech models.</p>
       </div>
     </div>
     <p style="margin-top:2.2rem">Tools the assistant can call:</p>
@@ -219,8 +222,8 @@ footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:1rem}
   <div class="wrap">
     <h2>Honest by design</h2>
     <div class="facts">
-      <div><strong>125</strong><span>unit tests that need no mic, speaker, API key or network</span></div>
-      <div><strong>2</strong><span>LLM backends tested through one shared streaming and tool loop</span></div>
+      <div><strong>112</strong><span>unit tests that need no mic, speaker, Ollama server or network</span></div>
+      <div><strong>5</strong><span>tool rounds at most per reply, enforced and tested in one shared streaming loop</span></div>
       <div><strong>0</strong><span>performance numbers in the docs that you cannot re-run yourself</span></div>
     </div>
     <div class="note">
@@ -243,7 +246,7 @@ python -m venv venv
 venv\Scripts\activate      <span class="c"># macOS/Linux: source venv/bin/activate</span>
 pip install -r requirements.txt
 
-<span class="c"># choose a brain: set ANTHROPIC_API_KEY, or use local Ollama</span>
+<span class="c"># config and the local model</span>
 copy .env.example .env     <span class="c"># macOS/Linux: cp</span>
 ollama pull llama3.2
 

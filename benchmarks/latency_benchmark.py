@@ -30,6 +30,7 @@ from datetime import date
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.config import Config
+PROVIDER = "ollama"
 from src.metrics import Timeline, percentile
 
 PROMPT_SETS = {
@@ -98,9 +99,9 @@ def main():
     args = parser.parse_args()
 
     from src.assistant import _build_llm
-    model = Config.OLLAMA_MODEL if Config.LLM_PROVIDER == "ollama" else Config.CLAUDE_MODEL
+    model = Config.OLLAMA_MODEL
     llm = _build_llm()
-    print(f"Provider: {Config.LLM_PROVIDER}  model: {model}")
+    print(f"Provider: {PROVIDER}  model: {model}")
 
     rows = []
     tts_warned = False
@@ -124,7 +125,7 @@ def main():
                           f"full={r['full']:.2f} tools={r['tools']}  {prompt!r}")
 
     # raw data
-    with open(os.path.join(OUT_DIR, f"results_{Config.LLM_PROVIDER}.csv"), "w", newline="", encoding="utf-8") as f:
+    with open(os.path.join(OUT_DIR, f"results_{PROVIDER}.csv"), "w", newline="", encoding="utf-8") as f:
         fields = ["set", "prompt", "rep", "mode", "ttft", "first_chunk", "full", "tools", "synth"]
         w = csv.DictWriter(f, fieldnames=fields, extrasaction="ignore")
         w.writeheader()
@@ -135,7 +136,7 @@ def main():
         "# Latency benchmark",
         "",
         f"- Date: {date.today().isoformat()}",
-        f"- Provider / model: `{Config.LLM_PROVIDER}` / `{model}`",
+        f"- Provider / model: `{PROVIDER}` / `{model}`",
         f"- Machine: {platform.platform()} ({platform.processor() or 'unknown CPU'}), "
         f"Python {platform.python_version()}",
         f"- Repeats per prompt per mode: {args.repeats}; clause mode cuts at >= {CLAUSE_CHARS} chars",
@@ -170,9 +171,9 @@ def main():
             ]
     lines += [
         "Notes: runs that called a tool include the tool round trip in every column. "
-        f"Raw per-run data is in `results_{Config.LLM_PROVIDER}.csv`.",
+        f"Raw per-run data is in `results_{PROVIDER}.csv`.",
     ]
-    with open(os.path.join(OUT_DIR, f"results_{Config.LLM_PROVIDER}.md"), "w", encoding="utf-8") as f:
+    with open(os.path.join(OUT_DIR, f"results_{PROVIDER}.md"), "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
     print("\n".join(lines))
 

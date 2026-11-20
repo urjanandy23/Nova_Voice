@@ -28,10 +28,6 @@ def _bool(name: str, default: bool) -> bool:
 
 
 class Config:
-    LLM_PROVIDER = os.getenv("LLM_PROVIDER", "anthropic").lower()
-
-    ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
-    CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-6")
 
     OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2")
     OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
@@ -78,11 +74,3 @@ class Config:
     SEARCH_CACHE_SECONDS = _int("SEARCH_CACHE_SECONDS", 300)
 
 
-def require_api_key() -> None:
-    if Config.LLM_PROVIDER != "anthropic":
-        return
-    if not Config.ANTHROPIC_API_KEY:
-        raise RuntimeError(
-            "ANTHROPIC_API_KEY is not set. Copy .env.example to .env and add your key, "
-            "or set LLM_PROVIDER=ollama in .env to use a free local model instead."
-        )

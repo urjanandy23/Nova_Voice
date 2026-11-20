@@ -13,7 +13,7 @@ import threading
 import time
 from typing import Any
 
-from .config import Config, require_api_key
+from .config import Config
 from .errors import AudioInputError, MicrophoneError, TranscriptionError
 from .functions import start_reminder_watcher
 from .metrics import Timeline
@@ -27,16 +27,13 @@ AUDIO_RETRY_SECONDS = 1.0
 
 
 def _build_llm() -> Any:
-    if Config.LLM_PROVIDER == "ollama":
-        from .llm_ollama import OllamaVoiceLLM
-        return OllamaVoiceLLM()
-    from .llm import ClaudeVoiceLLM
-    return ClaudeVoiceLLM()
+    from .llm_ollama import OllamaVoiceLLM
+    return OllamaVoiceLLM()
 
 
 class VoiceAssistant:
     def __init__(self, mode: str = "wake_word", barge_in: bool = False) -> None:
-        require_api_key()
+        
         if mode not in MODES:
             raise ValueError(f"mode must be one of {MODES}")
         self.mode = mode
@@ -59,7 +56,7 @@ class VoiceAssistant:
         print("Loading text-to-speech...")
         self.tts = StreamingTTS()
 
-        print(f"Connecting to LLM ({Config.LLM_PROVIDER})...")
+        print(f"Connecting to Ollama ({Config.OLLAMA_MODEL})...")
         self.llm = _build_llm()
         self.memory = self.llm.new_memory()
 
@@ -169,8 +166,7 @@ class VoiceAssistant:
             print(f"You said: {user_text}")
         self.memory.add_user(user_text)
 
-        label = "Claude" if Config.LLM_PROVIDER == "anthropic" else "Assistant"
-        print(f"{label}: ", end="", flush=True)
+        print("Assistant: ", end="", flush=True)
 
         cancel = threading.Event()
         self.tts.start(timeline)

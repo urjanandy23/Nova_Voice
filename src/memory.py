@@ -1,14 +1,10 @@
 """Rolling conversation window.
 
-Trimming only ever cuts at the start of a user turn, so a tool_use message
-is never separated from its tool_result (the Anthropic API rejects that).
+Trimming only ever cuts at the start of a user turn, so a tool_calls message
+is never separated from its role=tool reply.
 
-``ConversationMemory`` holds only what every backend shares. Each backend uses
-the subclass that matches its own wire format, so neither format leaks into
-the other:
-
-* ``AnthropicMemory``: tool_use / tool_result content blocks
-* ``OllamaMemory``: ``tool_calls`` on the assistant message + ``role: tool``
+``ConversationMemory`` holds what any backend would share; ``OllamaMemory`` adds
+the Ollama wire format (``tool_calls`` on the assistant message + ``role: tool``).
 """
 from __future__ import annotations
 
@@ -54,10 +50,6 @@ class ConversationMemory:
         self.messages = []
 
 
-class AnthropicMemory(ConversationMemory):
-    def add_assistant(self, content: Any) -> None:
-        """content: the list of content blocks from an Anthropic message."""
-        self.messages.append({"role": "assistant", "content": content})
 
     def add_tool_results(self, results: list[tuple[str, str]]) -> None:
         """results: list of (tool_use_id, text). All results for one assistant

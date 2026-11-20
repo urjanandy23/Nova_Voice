@@ -32,18 +32,6 @@ from src.config import Config  # noqa: E402
 from src.functions import TOOLS  # noqa: E402
 from src.prompts import SYSTEM_PROMPT  # noqa: E402
 
-def predict_anthropic(messages):
-    from anthropic import Anthropic
-    client = Anthropic(api_key=Config.ANTHROPIC_API_KEY)
-    resp = client.messages.create(
-        model=Config.CLAUDE_MODEL, max_tokens=512, system=SYSTEM_PROMPT,
-        messages=messages, tools=TOOLS,
-    )
-    for block in resp.content:
-        if block.type == "tool_use":
-            return block.name
-    return NONE
-
 
 def predict_ollama(messages):
     import ollama
@@ -135,9 +123,9 @@ def main():
     parser.add_argument("--suite", choices=["single", "multi", "all"], default="all")
     args = parser.parse_args()
 
-    provider = Config.LLM_PROVIDER
-    predict = predict_ollama if provider == "ollama" else predict_anthropic
-    model = Config.OLLAMA_MODEL if provider == "ollama" else Config.CLAUDE_MODEL
+    provider = "ollama"
+    predict = predict_ollama
+    model = Config.OLLAMA_MODEL
     prompt_hash = hashlib.sha256(
         (SYSTEM_PROMPT + str([t["description"] for t in TOOLS])).encode()).hexdigest()[:10]
     print(f"Provider: {provider}  model: {model}  prompt-hash: {prompt_hash}\n")

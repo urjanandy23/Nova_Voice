@@ -2,7 +2,6 @@
 # major release from breaking a fresh install. For fully reproducible installs,
 # generate an exact lock file after your first successful run:
 #     pip freeze > requirements.lock      (see README > Reproducible installs)
-anthropic>=0.39.0,<1.0
 ollama>=0.4.0,<1.0
 faster-whisper>=1.0.3,<2.0
 edge-tts>=6.1.12,<8.0

@@ -35,7 +35,6 @@ def install():
     oww.model = oww_model
     _module("edge_tts", Communicate=None)
     _module("pydub", AudioSegment=type("AudioSegment", (), {}))
-    _module("anthropic", Anthropic=object)
     _module("ollama", Client=None)
 
 

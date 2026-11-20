@@ -3,10 +3,7 @@
 Tools are never executed by the eval. Multi-turn cases carry a scripted
 history (including past tool calls and their results) and the final user
 message; the label is the FIRST tool the model should call for that message,
-or NONE. History is rendered in each provider's own message format through the
-same memory classes the assistant uses, so the eval exercises the real wire
-format (tool_use/tool_result blocks for Claude, tool_calls + role=tool for
-Ollama).
+or NONE. History is rendered in Ollama’s message format through the same memory class the assistant uses (tool_calls on the assistant message + role=tool).
 """
 from __future__ import annotations
 
@@ -16,7 +13,7 @@ from dataclasses import dataclass, field
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.memory import AnthropicMemory, OllamaMemory  # noqa: E402
+from src.memory import OllamaMemory  # noqa: E402
 
 NONE = "none"
 
@@ -205,26 +202,18 @@ MULTI_TURN_CASES: list[MultiTurnCase] = [
 
 def build_messages(case: MultiTurnCase, provider: str) -> list[dict]:
     """Render the case's history + final user message in the provider's format."""
-    if provider == "ollama":
-        mem = OllamaMemory(max_turns=1000)
-    elif provider == "anthropic":
-        mem = AnthropicMemory(max_turns=1000)
-    else:
+    if provider != "ollama":
         raise ValueError(f"unknown provider {provider!r}")
+    mem = OllamaMemory(max_turns=1000)
 
     for i, turn in enumerate(case.history):
         mem.add_user(turn.user)
         if turn.tool:
             name, args, result = turn.tool
             call_id = f"call_{i}"
-            if provider == "anthropic":
-                mem.add_assistant([{"type": "tool_use", "id": call_id,
-                                    "name": name, "input": args}])
-                mem.add_tool_results([(call_id, result)])
-            else:
-                mem.add_assistant_tool_calls(
-                    [{"id": call_id, "function": {"name": name, "arguments": args}}])
-                mem.add_tool_message(call_id, name, result)
+            mem.add_assistant_tool_calls(
+                [{"id": call_id, "function": {"name": name, "arguments": args}}])
+            mem.add_tool_message(call_id, name, result)
         mem.add_assistant_text(turn.assistant)
     mem.add_user(case.user)
     return mem.as_list()

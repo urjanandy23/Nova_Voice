@@ -1,15 +1,16 @@
 # Nova Voice
 
-A hands-free voice assistant: wake word → speech-to-text → LLM (Claude or a local
+A hands-free voice assistant: wake word → speech-to-text → LLM (a local
 Ollama model, with tool use) → streaming text-to-speech. The engineering focus is
 **perceived latency** and **natural turn-taking**: the assistant starts speaking
-before its answer has finished generating, and you can interrupt it mid-sentence.
+before its answer has finished generating, and you can interrupt it mid-sentence
 
 # Nova Voice
 
 **[Live demo and landing page](https://urjanandy23.github.io/Nova_Voice/)** · [Watch the 25-second video](https://github.com/urjanandy23/Nova_Voice/raw/main/docs/brag.mp4)
 
 [![Nova Voice demo video](docs/brag.jpg)](https://urjanandy23.github.io/Nova_Voice/)
+
 
 > **Status of the numbers.** Every performance figure in this README comes from a
 > script in this repo that you can re-run. Sections marked **TODO: run** are not
@@ -55,13 +56,14 @@ are truncated, cached briefly, and labelled as untrusted text in the prompt (a b
 prompt-injection mitigation, not a guarantee).
 
 **Memory** (`src/memory.py`): a rolling window that trims only at user-turn
-boundaries, so a `tool_use` message is never separated from its `tool_result`
-(which the Anthropic API rejects). `ConversationMemory` holds only what backends
-share; `AnthropicMemory` and `OllamaMemory` add each provider's own message format.
+boundaries, so an assistant `tool_calls` message is never separated from its
+`role: tool` reply. `ConversationMemory` holds what any backend would share;
+`OllamaMemory` adds the Ollama message format.
 
-**LLM backends** (`src/llm_base.py`): chunking, cancellation, the tool-round limit and
-tool dispatch live once in `BaseVoiceLLM`. `llm.py` (Claude) and `llm_ollama.py` only
-implement "run one streamed round" and "write it into my memory format".
+**LLM backend** (`src/llm_base.py`): chunking, cancellation, the tool-round limit and
+tool dispatch live once in `BaseVoiceLLM`. `llm_ollama.py` only implements "run one
+streamed round" and "write it into my memory format". `OllamaVoiceLLM` is the only
+backend today.
 
 ## Project structure
 
@@ -73,17 +75,17 @@ implement "run one streamed round" and "write it into my memory format".
 │   ├── text_utils.py           # sentence/clause chunking, speech cleaning  (pure, tested)
 │   ├── vad.py                  # endpointing + barge-in state machines      (pure, tested)
 │   ├── metrics.py              # per-turn Timeline, percentiles             (pure, tested)
-│   ├── memory.py               # turn-safe window; Anthropic / Ollama formats    (pure, tested)
+│   ├── memory.py               # turn-safe window; Ollama message format         (pure, tested)
 │   ├── errors.py               # MicrophoneError, TranscriptionError
 │   ├── llm_base.py             # shared streaming + tool loop                    (pure, tested)
 │   ├── functions.py            # tools: reminders, web search
-│   ├── llm.py / llm_ollama.py  # Claude / Ollama: one streamed round each
+│   ├── llm_ollama.py           # Ollama: one streamed round
 │   ├── stt.py                  # recording + faster-whisper
 │   ├── tts.py                  # edge-tts pipeline + interruptible playback
 │   ├── wake_word.py            # openwakeword listener
 │   ├── barge_in.py             # mic monitor while the assistant talks
 │   └── assistant.py            # orchestration
-├── tests/                      # 125 unit tests; fake mic/Whisper/TTS/LLM (tests/_stubs.py)
+├── tests/                      # 112 unit tests; fake mic/Whisper/TTS/LLM (tests/_stubs.py)
 ├── benchmarks/latency_benchmark.py
 ├── evals/
 │   ├── cases.py                # single-turn + multi-turn eval cases
@@ -96,7 +98,7 @@ implement "run one streamed round" and "write it into my memory format".
 1. `python3 -m venv venv && source venv/bin/activate` (Windows: `venv\Scripts\activate`)
 2. System audio deps: macOS `brew install portaudio ffmpeg` · Ubuntu `sudo apt install portaudio19-dev ffmpeg` · Windows: install [ffmpeg](https://ffmpeg.org/download.html) and add it to PATH.
 3. `pip install -r requirements.txt`
-4. `cp .env.example .env` and set `ANTHROPIC_API_KEY`, **or** set `LLM_PROVIDER=ollama` to use a free local model (`ollama pull llama3.2`).
+4. Install [Ollama](https://ollama.com) and run `ollama pull llama3.2` (free, no API key), then `cp .env.example .env`.
 5. First run downloads the Whisper model (~150 MB for `base`) and the wake-word model.
 
 ### Reproducible installs
@@ -142,18 +144,18 @@ See `.env.example`. The tunables that matter most for feel:
 python -m unittest discover -s tests -v
 ```
 
-125 tests, no microphone, speakers, API key or network needed. Audio, model and LLM
+112 tests, no microphone, speakers, Ollama server or network needed. Audio, model and LLM
 libraries are replaced by fakes in `tests/_stubs.py`. Covered: sentence/clause chunking,
-endpointing and barge-in logic, memory trimming (both formats), reminders and
-tool-argument validation, the shared streaming/tool/cancel loop through **both** the
-Claude and Ollama backends, STT recording and transcription (including mic-lost and
+endpointing and barge-in logic, memory trimming (Ollama message format), reminders and
+tool-argument validation, the shared streaming/tool/cancel loop through the
+Ollama backend (fake client), STT recording and transcription (including mic-lost and
 Whisper-failure paths and the end-of-speech timing), wake-word loop (threshold, per-frame
 timing, device and model errors), the TTS worker (ordering, failed sentence, interruption),
 the assistant loop (turn flow, rollback, failure counting, fallback to a working mode)
 and the eval case sets.
 
 Not covered, because it needs real hardware or services: that the actual microphone,
-speakers, Whisper, openwakeword, edge-tts and live LLMs behave as the fakes assume.
+speakers, Whisper, openwakeword, edge-tts and a live Ollama server behave as the fakes assume.
 
 ## Measured results
 
@@ -168,10 +170,10 @@ python benchmarks/latency_benchmark.py --repeats 3 --with-tts
 It reports median / p95 over repeated runs for two prompt sets: **short** (one-sentence
 answers, where streaming cannot help) and **long** (multi-sentence answers, where it
 should), comparing naive (wait for full reply) vs sentence streaming vs clause-cut
-streaming, plus real edge-tts synthesis time. It records provider, model, hardware, and
+streaming, plus real edge-tts synthesis time. It records the model, hardware, and
 how many runs involved a tool call.
 
-**TODO: run** → paste `benchmarks/results_<provider>.md` here (one file per provider).
+**TODO: run** → paste `benchmarks/results_ollama.md` here.
 
 **Earlier run, kept for honesty** (`benchmarks/archive/`): a single run over 10
 one-sentence prompts on a local Ollama model gave an average time-to-first-audio of
@@ -194,7 +196,7 @@ Two suites (`evals/cases.py`):
 - **single** (28 cases): set / list / cancel reminder, web search, no-tool general
   knowledge, and ambiguous requests (no time given → should ask, not guess).
 - **multi** (19 cases): scripted history, including earlier tool calls and their results
-  rendered in each provider's real message format, then a follow-up: supplying the missing
+  rendered in the Ollama message format, then a follow-up: supplying the missing
   time ("in 20 minutes"), "cancel that", "make it 30 minutes" (cancel first), "and in
   Paris?", "what's the weather there?", and cases where the right answer is *no* tool even
   though tools were used earlier ("thanks", "summarize that", a topic switch).
@@ -202,7 +204,7 @@ Two suites (`evals/cases.py`):
 The label is the first tool the model should call for the last message. Reports overall
 and per-suite accuracy, per-tool precision/recall, a confusion matrix and every failure,
 tagged with a hash of the prompt and tool descriptions. Output goes to
-`evals/results_<provider>.md`, so a Claude run never overwrites an Ollama run.
+`evals/results_ollama.md`, so before/after runs can be compared.
 
 **Before** (`evals/archive/`, old prompt, `llama3.2` via Ollama, 13 cases): **9/13
 (69.2 %)**. All 4 failures were the same bug: `search_web` called for trivia ("capital of
@@ -210,7 +212,7 @@ France", "boiling point of water", ...).
 
 **After** (rewritten system prompt and tool descriptions with explicit "do not search for
 general knowledge" rules, plus a larger case set): **TODO: run** → paste
-`evals/results_ollama.md` and, for Claude, `evals/results_anthropic.md`. Not directly comparable with *before* (different, larger case
+`evals/results_ollama.md`. Not directly comparable with *before* (different, larger case
 set); to compare fairly, run both prompts on the same cases.
 
 ## Privacy
@@ -221,8 +223,8 @@ telemetry of its own.
 | Data | Where it goes | Kept? |
 |---|---|---|
 | **Microphone audio** | Wake-word detection and Whisper both run **locally**. In `--text-only` mode the mic is never opened. | In RAM only, for the current utterance (plus a 1 s rolling buffer while `--barge-in` is on). Never written to disk. |
-| **Your transcribed words** | Sent to the LLM you chose, together with the last `MAX_HISTORY_TURNS` (12) turns, the system prompt and tool results. **Claude:** Anthropic's API. **Ollama:** `OLLAMA_HOST` (default `localhost`, so nothing leaves the machine; if you point it at another host, the text goes there). | Conversation history lives in RAM and is gone when you quit. How long a provider retains API data is governed by that provider's own terms. |
-| **Assistant replies** | Sent as text to Microsoft's online voice service through `edge-tts` for synthesis, so replies and reminder text leave your machine even with Ollama. | Not stored by this project. |
+| **Your transcribed words** | Sent to the Ollama server at `OLLAMA_HOST`, with the last `MAX_HISTORY_TURNS` (12) turns, the system prompt and tool results. With the default `localhost` this part does not leave the machine; if you point it at another host, the text goes there. | Conversation history lives in RAM and is gone when you quit. |
+| **Assistant replies** | Sent as text to Microsoft's online voice service through `edge-tts` for synthesis, so replies and reminder text leave your machine even though the LLM is local. | Not stored by this project. |
 | **Web searches** | The `search_web` tool sends the model-written query to DuckDuckGo (via `ddgs`). The snippets that come back are passed to the LLM. The model may put details from your request into the query. | Cached in RAM for `SEARCH_CACHE_SECONDS` (300). |
 | **Reminders** | Local file `reminders.json` in the working directory (plain text: text and time). Fired reminders stay in the file marked as fired. | Until you delete the file. It is in `.gitignore`. |
 | **Terminal output** | Your transcript, the reply and the timing line are printed. Errors are logged to stderr (tracebacks, never audio). | Whatever your terminal scrollback keeps. |
@@ -234,7 +236,7 @@ Practical notes:
   transcribed or sent anywhere until the wake word fires, so a **false wake** will record
   and send whatever was said next. Raise `WAKE_WORD_THRESHOLD` if that happens. Anyone
   within earshot of the mic is captured, so tell the people around you.
-- To keep the LLM local use `LLM_PROVIDER=ollama`. That does **not** make the assistant
+- Running Ollama on localhost keeps the LLM local. That does **not** make the assistant
   offline: speech output (`edge-tts`) and `search_web` still use the network. There is no
   switch to disable them yet; removing the `search_web` entry from `TOOLS` in
   `src/functions.py` turns search off, and `tts.py` is the one file to change for an
@@ -257,9 +259,8 @@ should pass anywhere, with no hardware.
 2. `python main.py`: say the wake word 10+ times and leave it idle for a few minutes
    to see false wakes; check `wake_infer_max` stays under the 80 ms budget.
 3. Pull the mic (or revoke permission) mid-session and confirm you get a message, not a crash.
-4. `python evals/tool_calling_eval.py --repeats 3` with `LLM_PROVIDER=ollama`, then with
-   `LLM_PROVIDER=anthropic`.
-5. `python benchmarks/latency_benchmark.py --repeats 3 --with-tts` for both providers.
+4. `python evals/tool_calling_eval.py --repeats 3`
+5. `python benchmarks/latency_benchmark.py --repeats 3 --with-tts`
 6. `pip freeze > requirements.lock` once everything works.
 7. Optional: `pip install mypy && mypy src` to check the new type hints.
 
@@ -276,15 +277,14 @@ should pass anywhere, with no hardware.
 - **Web search** is DuckDuckGo snippets with no source verification.
 - **Not yet measured:** end-to-end latency on real hardware (the `[timing]` line now reports
   the endpoint wait and wake-word stages, but nobody has collected numbers yet), word error
-  rate for Whisper in your environment, false-wake / false-barge-in rates, and any figure
-  for the Claude path.
+  rate for Whisper in your environment, false-wake / false-barge-in rates.
 - **Type hints** cover every module in `src/`, but `mypy` has not been run on them.
 
 ## Extending
 
 - **Better voices:** replace `StreamingTTS._synthesize`; the queue + interruptible playback do not change.
 - **New tool:** add a schema to `TOOLS`, an implementation, and a branch in `dispatch_tool`; add cases to `evals/`.
-- **Swap STT / LLM:** `stt.py` and `llm.py` / `llm_ollama.py` are the only files that touch Whisper / the LLM.
+- **Swap STT / LLM:** `stt.py` and `llm_ollama.py` are the only files that touch Whisper / the LLM.
 
 ## License
 

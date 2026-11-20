@@ -1,23 +1,18 @@
-"""Tests the shared streaming / tool-loop / cancel logic (src/llm_base.py)
-through BOTH backends, against fake clients (no network, no API key).
-The same scenarios run for Claude and Ollama, which is the point of having one loop."""
+"""Tests the shared streaming / tool-loop / cancel logic (src/llm_base.py) against a fake Ollama client (no network, no running Ollama server)."""
 import os
 import tempfile
 import threading
-import types
 import unittest
 
 import _stubs  # noqa: F401  (must come before src imports)
-from src import llm as claude_module
 from src import llm_base
 from src import llm_ollama as ollama_module
 from src.config import Config
 from src.llm_base import BaseVoiceLLM
-from src.memory import AnthropicMemory, OllamaMemory
+from src.memory import OllamaMemory
 from src.metrics import Timeline
 
 
-# ---------------------------------------------------------------- Anthropic fakes
 class Block:
     def __init__(self, type, **kw):
         self.type = type
@@ -41,18 +36,6 @@ class FakeStream:
     def get_final_message(self):
         return self._final
 
-
-class FakeAnthropicClient:
-    def __init__(self, scripted):
-        self.scripted = list(scripted)
-        self.messages = self
-
-    def stream(self, **kwargs):
-        return self.scripted.pop(0)
-
-
-def final(stop, *blocks):
-    return types.SimpleNamespace(stop_reason=stop, content=list(blocks))
 
 
 class FakeOllamaClient:
@@ -142,44 +125,6 @@ class SharedLoopTests:
     def test_new_memory_matches_backend_format(self):
         self.assertIsInstance(self.make_llm([]).new_memory(), self.memory_class)
 
-
-class TestClaudeBackend(SharedLoopTests, unittest.TestCase):
-    backend_class = claude_module.ClaudeVoiceLLM
-    memory_class = AnthropicMemory
-
-    def make_llm(self, scripted):
-        llm = claude_module.ClaudeVoiceLLM.__new__(claude_module.ClaudeVoiceLLM)
-        llm.client = FakeAnthropicClient(scripted)
-        return llm
-
-    def text_round(self, pieces):
-        return FakeStream(pieces, final("end_turn", Block("text", text="x")))
-
-    def tool_round(self, name, args, call_id):
-        return FakeStream([], final("tool_use", Block("tool_use", id=call_id, name=name, input=args)))
-
-    def test_tool_results_go_back_in_one_user_message(self):
-        llm = self.make_llm([
-            self.tool_round("list_reminders", {}, "t1"),
-            self.text_round(["Done."]),
-        ])
-        mem = llm.new_memory()
-        mem.add_user("q")
-        llm.stream_response(mem, lambda s: None)
-        results = [m for m in mem.as_list()
-                   if m["role"] == "user" and isinstance(m["content"], list)]
-        self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]["content"][0]["tool_use_id"], "t1")
-
-    def test_tool_use_stop_without_tool_blocks_is_treated_as_final(self):
-        llm = self.make_llm([FakeStream(["Hi."], final("tool_use", Block("text", text="Hi.")))])
-        mem = llm.new_memory()
-        mem.add_user("q")
-        got = []
-        llm.stream_response(mem, got.append)  # must not append an empty tool_result message
-        self.assertEqual(got, ["Hi."])
-        self.assertFalse([m for m in mem.as_list()
-                          if m["role"] == "user" and isinstance(m["content"], list)])
 
 
 class TestOllamaBackend(SharedLoopTests, unittest.TestCase):

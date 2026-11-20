@@ -49,18 +49,6 @@ class TestCaseSets(unittest.TestCase):
 
 
 class TestBuildMessages(unittest.TestCase):
-    def test_anthropic_history_is_valid_and_alternates(self):
-        for c in cases.MULTI_TURN_CASES:
-            msgs = cases.build_messages(c, "anthropic")
-            self.assertEqual(msgs[0]["role"], "user", c.name)
-            self.assertEqual(msgs[-1], {"role": "user", "content": c.user}, c.name)
-            for a, b in zip(msgs, msgs[1:]):
-                self.assertNotEqual(a["role"], b["role"], f"{c.name}: roles must alternate")
-            used = {b["id"] for m in msgs if isinstance(m["content"], list)
-                    for b in m["content"] if b.get("type") == "tool_use"}
-            answered = {b["tool_use_id"] for m in msgs if isinstance(m["content"], list)
-                        for b in m["content"] if b.get("type") == "tool_result"}
-            self.assertEqual(used, answered, c.name)
 
     def test_ollama_history_pairs_tool_calls_with_tool_messages(self):
         for c in cases.MULTI_TURN_CASES:
@@ -70,12 +58,9 @@ class TestBuildMessages(unittest.TestCase):
             tool_ids = [m["tool_call_id"] for m in msgs if m["role"] == "tool"]
             self.assertEqual(ids, tool_ids, c.name)
 
-    def test_formats_differ_for_a_tool_case(self):
-        c = next(c for c in cases.MULTI_TURN_CASES if c.name == "cancel 'that' reminder")
-        self.assertTrue(any(isinstance(m["content"], list)
-                            for m in cases.build_messages(c, "anthropic")))
-        self.assertTrue(any(m["role"] == "tool" for m in cases.build_messages(c, "ollama")))
-
+        def test_tool_case_renders_tool_messages(self):
+         c = next(c for c in cases.MULTI_TURN_CASES if c.name == "cancel 'that' reminder")
+         self.assertTrue(any(m["role"] == "tool" for m in cases.build_messages(c, "ollama")))
     def test_unknown_provider_rejected(self):
         with self.assertRaises(ValueError):
             cases.build_messages(cases.MULTI_TURN_CASES[0], "nope")
@@ -85,7 +70,7 @@ class TestEvalRunner(unittest.TestCase):
     def test_build_jobs_respects_suite(self):
         n_single, n_multi = len(cases.SINGLE_TURN_CASES), len(cases.MULTI_TURN_CASES)
         self.assertEqual(len(ev.build_jobs("single", "ollama")), n_single)
-        self.assertEqual(len(ev.build_jobs("multi", "anthropic")), n_multi)
+        self.assertEqual(len(ev.build_jobs("multi", "ollama")), n_multi)
         self.assertEqual(len(ev.build_jobs("all", "ollama")), n_single + n_multi)
 
     def test_report_has_per_suite_accuracy_and_failures(self):
